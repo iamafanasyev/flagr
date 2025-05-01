@@ -16,9 +16,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/bsm/ratelimit"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/go-openapi/runtime/middleware"
-	"github.com/zhouzhuojie/conditions"
 )
 
 // Eval is the Eval interface
@@ -266,17 +264,8 @@ var evalSegment = func(
 	evalNextSegment bool,
 ) {
 	if len(segment.Constraints) != 0 {
-		m, ok := evalContext.EntityContext.(map[string]interface{})
-		if !ok {
-			log = &models.SegmentDebugLog{
-				Msg:       fmt.Sprintf("constraints are present in the segment_id %v, but got invalid entity_context: %s.", segment.ID, spew.Sdump(evalContext.EntityContext)),
-				SegmentID: int64(segment.ID),
-			}
-			return nil, log, true
-		}
-
-		expr := segment.SegmentEvaluation.ConditionsExpr
-		match, err := conditions.Evaluate(expr, m)
+		// Use the PredicateAll function directly on the constraints
+		match, err := segment.Constraints.PredicateAll(evalContext.EntityContext)
 		if err != nil {
 			log = &models.SegmentDebugLog{
 				Msg:       err.Error(),
@@ -285,8 +274,13 @@ var evalSegment = func(
 			return nil, log, true
 		}
 		if !match {
+			// For debug messages, we need to cast to map[string]interface{} but only for the message
+			m, ok := evalContext.EntityContext.(map[string]interface{})
+			if !ok {
+				m = map[string]interface{}{}
+			}
 			log = &models.SegmentDebugLog{
-				Msg:       debugConstraintMsg(evalContext.EnableDebug, expr, m),
+				Msg:       debugConstraintMsg(evalContext.EnableDebug, nil, m),
 				SegmentID: int64(segment.ID),
 			}
 			return nil, log, true
@@ -309,11 +303,12 @@ var evalSegment = func(
 	return vID, log, false
 }
 
-func debugConstraintMsg(enableDebug bool, expr conditions.Expr, m map[string]interface{}) string {
+func debugConstraintMsg(enableDebug bool, expr interface{}, m map[string]interface{}) string {
 	if !enableDebug {
 		return ""
 	}
-	return fmt.Sprintf("constraint not match. constraint: %s, entity_context: %+v.", expr, m)
+
+	return fmt.Sprintf("constraint not match. entity_context: %+v.", m)
 }
 
 var rateLimitMap = sync.Map{}

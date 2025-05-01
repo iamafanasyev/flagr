@@ -210,7 +210,7 @@ func TestEvalFlag(t *testing.T) {
 				SegmentID: 200,
 				Property:  "state",
 				Operator:  models.ConstraintOperatorEQ,
-				Value:     `{dl_state}`,
+				Value:     `"CA"`,
 			},
 			{
 				Model:     gorm.Model{ID: 502},

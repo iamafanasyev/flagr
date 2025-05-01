@@ -1,7 +1,6 @@
 package entity
 
 import (
-	"github.com/zhouzhuojie/conditions"
 	"gorm.io/gorm"
 )
 
@@ -19,7 +18,19 @@ type Segment struct {
 	Distributions  []Distribution
 
 	// Purely for evaluation
+
 	SegmentEvaluation SegmentEvaluation `gorm:"-" json:"-"`
+}
+
+// EvaluateConstraints evaluates the segment's constraints against the entity context
+// Returns true if the constraints match, false otherwise
+func (s *Segment) EvaluateConstraints(entityContext interface{}) (bool, error) {
+	if len(s.Constraints) == 0 {
+		return true, nil
+	}
+
+	// Use the PredicateAll function directly on the constraints
+	return s.Constraints.PredicateAll(entityContext)
 }
 
 // PreloadConstraintsDistribution preloads constraints and distributions
@@ -41,12 +52,10 @@ func (s *Segment) Preload(db *gorm.DB) error {
 
 // SegmentEvaluation is a struct that holds the necessary info for evaluation
 type SegmentEvaluation struct {
-	ConditionsExpr    conditions.Expr
 	DistributionArray DistributionArray
 }
 
-// PrepareEvaluation prepares the segment for evaluation by parsing constraints
-// and denormalize distributions
+// PrepareEvaluation prepares the segment for evaluation by denormalizing distributions
 func (s *Segment) PrepareEvaluation() error {
 	dLen := len(s.Distributions)
 	se := SegmentEvaluation{
@@ -54,14 +63,6 @@ func (s *Segment) PrepareEvaluation() error {
 			VariantIDs:          make([]uint, dLen),
 			PercentsAccumulated: make([]int, dLen),
 		},
-	}
-
-	if len(s.Constraints) != 0 {
-		expr, err := s.Constraints.ToExpr()
-		if err != nil {
-			return err
-		}
-		se.ConditionsExpr = expr
 	}
 
 	for i, d := range s.Distributions {
