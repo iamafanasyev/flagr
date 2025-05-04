@@ -264,8 +264,8 @@ var evalSegment = func(
 	evalNextSegment bool,
 ) {
 	if len(segment.Constraints) != 0 {
-		// Use the PredicateAll function directly on the constraints
-		match, err := segment.Constraints.PredicateAll(evalContext.EntityContext)
+		// Use the pre-compiled predicate function
+		match, err := segment.SegmentEvaluation.Check(evalContext.EntityContext)
 		if err != nil {
 			log = &models.SegmentDebugLog{
 				Msg:       err.Error(),
