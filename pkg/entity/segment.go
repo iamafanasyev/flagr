@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/openflagr/flagr/swagger_gen/models"
@@ -75,7 +76,6 @@ func (s *Segment) PrepareEvaluation() error {
 		compiledRegex *regexp.Regexp
 		numericValue  float64
 		isNumeric     bool
-		checkFunc     func(propValue interface{}) bool
 	}
 
 	preCompiled := make([]preCompiledConstraint, 0, len(s.Constraints))
@@ -95,18 +95,6 @@ func (s *Segment) PrepareEvaluation() error {
 				return fmt.Errorf("invalid array value for IN/NOT IN operator: %s", err)
 			}
 			pc.value = values
-
-			// Create check function
-			if c.Operator == models.ConstraintOperatorIN {
-				pc.checkFunc = func(propValue interface{}) bool {
-					return contains(values, propValue)
-				}
-			} else { // NOT IN
-				pc.checkFunc = func(propValue interface{}) bool {
-					return !contains(values, propValue)
-				}
-			}
-
 		case models.ConstraintOperatorEREG, models.ConstraintOperatorNEREG:
 			// Compile regex once
 			regex, err := regexp.Compile(strings.Trim(c.Value, "\""))
@@ -114,18 +102,6 @@ func (s *Segment) PrepareEvaluation() error {
 				return fmt.Errorf("invalid regex: %s", err)
 			}
 			pc.compiledRegex = regex
-
-			// Create check function
-			if c.Operator == models.ConstraintOperatorEREG {
-				pc.checkFunc = func(propValue interface{}) bool {
-					return regex.MatchString(fmt.Sprintf("%v", propValue))
-				}
-			} else { // NEREG
-				pc.checkFunc = func(propValue interface{}) bool {
-					return !regex.MatchString(fmt.Sprintf("%v", propValue))
-				}
-			}
-
 		case models.ConstraintOperatorLT, models.ConstraintOperatorLTE, models.ConstraintOperatorGT, models.ConstraintOperatorGTE:
 			// For comparison operators, try to parse as numeric value
 			strValue := strings.Trim(c.Value, "\"")
@@ -136,104 +112,10 @@ func (s *Segment) PrepareEvaluation() error {
 			if ok {
 				pc.numericValue = numValue
 				pc.isNumeric = true
-
-				// Create check function with numeric comparison
-				switch c.Operator {
-				case models.ConstraintOperatorLT:
-					pc.checkFunc = func(propValue interface{}) bool {
-						propNumeric, propOk := toFloat64(propValue)
-						if propOk {
-							return propNumeric < numValue
-						}
-						return compareValues(propValue, strValue) < 0
-					}
-				case models.ConstraintOperatorLTE:
-					pc.checkFunc = func(propValue interface{}) bool {
-						propNumeric, propOk := toFloat64(propValue)
-						if propOk {
-							return propNumeric <= numValue
-						}
-						return compareValues(propValue, strValue) <= 0
-					}
-				case models.ConstraintOperatorGT:
-					pc.checkFunc = func(propValue interface{}) bool {
-						propNumeric, propOk := toFloat64(propValue)
-						if propOk {
-							return propNumeric > numValue
-						}
-						return compareValues(propValue, strValue) > 0
-					}
-				case models.ConstraintOperatorGTE:
-					pc.checkFunc = func(propValue interface{}) bool {
-						propNumeric, propOk := toFloat64(propValue)
-						if propOk {
-							return propNumeric >= numValue
-						}
-						return compareValues(propValue, strValue) >= 0
-					}
-				}
-			} else {
-				// Create check function with string comparison
-				switch c.Operator {
-				case models.ConstraintOperatorLT:
-					pc.checkFunc = func(propValue interface{}) bool {
-						return compareValues(propValue, strValue) < 0
-					}
-				case models.ConstraintOperatorLTE:
-					pc.checkFunc = func(propValue interface{}) bool {
-						return compareValues(propValue, strValue) <= 0
-					}
-				case models.ConstraintOperatorGT:
-					pc.checkFunc = func(propValue interface{}) bool {
-						return compareValues(propValue, strValue) > 0
-					}
-				case models.ConstraintOperatorGTE:
-					pc.checkFunc = func(propValue interface{}) bool {
-						return compareValues(propValue, strValue) >= 0
-					}
-				}
 			}
-
-		case models.ConstraintOperatorEQ:
-			// For equality operators, use the raw value but remove quotes if it's a string
-			strValue := strings.Trim(c.Value, "\"")
-			pc.value = strValue
-
-			pc.checkFunc = func(propValue interface{}) bool {
-				return reflect.DeepEqual(propValue, strValue)
-			}
-
-		case models.ConstraintOperatorNEQ:
-			// For inequality operators, use the raw value but remove quotes if it's a string
-			strValue := strings.Trim(c.Value, "\"")
-			pc.value = strValue
-
-			pc.checkFunc = func(propValue interface{}) bool {
-				return !reflect.DeepEqual(propValue, strValue)
-			}
-
-		case models.ConstraintOperatorCONTAINS:
-			// For CONTAINS operator, use the raw value but remove quotes if it's a string
-			strValue := strings.Trim(c.Value, "\"")
-			pc.value = strValue
-
-			pc.checkFunc = func(propValue interface{}) bool {
-				return containsElement(propValue, strValue)
-			}
-
-		case models.ConstraintOperatorNOTCONTAINS:
-			// For NOT CONTAINS operator, use the raw value but remove quotes if it's a string
-			strValue := strings.Trim(c.Value, "\"")
-			pc.value = strValue
-
-			pc.checkFunc = func(propValue interface{}) bool {
-				return !containsElement(propValue, strValue)
-			}
-
 		default:
 			// For other operators, use the raw value but remove quotes if it's a string
-			strValue := strings.Trim(c.Value, "\"")
-			pc.value = strValue
+			pc.value = strings.Trim(c.Value, "\"")
 		}
 
 		preCompiled = append(preCompiled, pc)
@@ -368,4 +250,31 @@ func (s *Segment) PrepareEvaluation() error {
 
 	s.SegmentEvaluation = se
 	return nil
+}
+
+// Helper function to convert interface{} to float64
+func toFloat64(v interface{}) (float64, bool) {
+	switch i := v.(type) {
+	case float64:
+		return i, true
+	case float32:
+		return float64(i), true
+	case int:
+		return float64(i), true
+	case int64:
+		return float64(i), true
+	case int32:
+		return float64(i), true
+	case uint:
+		return float64(i), true
+	case uint64:
+		return float64(i), true
+	case uint32:
+		return float64(i), true
+	case string:
+		if f, err := strconv.ParseFloat(i, 64); err == nil {
+			return f, true
+		}
+	}
+	return 0, false
 }

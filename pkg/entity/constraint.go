@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/openflagr/flagr/swagger_gen/models"
@@ -40,7 +39,6 @@ var OperatorToExprMap = map[string]string{
 	models.ConstraintOperatorCONTAINS:    "CONTAINS",
 	models.ConstraintOperatorNOTCONTAINS: "NOT CONTAINS",
 }
-
 
 // Validate validates Constraint
 func (c *Constraint) Validate() error {
@@ -179,33 +177,6 @@ func compareValues(a, b interface{}) int {
 	return 0
 }
 
-// Helper function to convert interface{} to float64
-func toFloat64(v interface{}) (float64, bool) {
-	switch i := v.(type) {
-	case float64:
-		return i, true
-	case float32:
-		return float64(i), true
-	case int:
-		return float64(i), true
-	case int64:
-		return float64(i), true
-	case int32:
-		return float64(i), true
-	case uint:
-		return float64(i), true
-	case uint64:
-		return float64(i), true
-	case uint32:
-		return float64(i), true
-	case string:
-		if f, err := strconv.ParseFloat(i, 64); err == nil {
-			return f, true
-		}
-	}
-	return 0, false
-}
-
 // Helper function to check if a slice contains an element
 func contains(slice []interface{}, element interface{}) bool {
 	for _, item := range slice {
@@ -237,7 +208,6 @@ func containsElement(container, element interface{}) bool {
 
 	return false
 }
-
 
 // PredicateAll evaluates all constraints against the entity context directly
 // without using the auxiliary Expr representation
