@@ -575,183 +575,6 @@ func BenchmarkEvalFlagsByTags(b *testing.B) {
 	}
 }
 
-func BenchmarkEvalSegment(b *testing.B) {
-	b.StopTimer()
-	// Stub out dependencies to reduce noise in the output
-	defer gostub.StubFunc(&logEvalResult).Reset()
-
-	segment := entity.GenFixtureSegment()
-	evalContext := models.EvalContext{
-		EnableDebug:   false,
-		EntityContext: map[string]interface{}{"dl_state": "CA"},
-		EntityID:      "entityID1",
-		EntityType:    "entityType1",
-		FlagID:        int64(100),
-	}
-	b.StartTimer()
-	for i := 0; i < b.N; i++ {
-		evalSegment(100, evalContext, segment)
-	}
-}
-
-func BenchmarkEvalSegmentDirect(b *testing.B) {
-	b.StopTimer()
-	// Stub out dependencies to reduce noise in the output
-	defer gostub.StubFunc(&logEvalResult).Reset()
-
-	// Create a segment directly with a single constraint, similar to GenFixtureSegment
-	segment := entity.Segment{
-		Model:          gorm.Model{ID: 200},
-		FlagID:         100,
-		Description:    "",
-		Rank:           0,
-		RolloutPercent: 100,
-		Constraints: []entity.Constraint{
-			{
-				Model:     gorm.Model{ID: 500},
-				SegmentID: 200,
-				Property:  "dl_state",
-				Operator:  models.ConstraintOperatorEQ,
-				Value:     `"CA"`,
-			},
-		},
-		Distributions: []entity.Distribution{
-			{
-				Model:      gorm.Model{ID: 400},
-				SegmentID:  200,
-				VariantID:  300,
-				VariantKey: "control",
-				Percent:    50,
-			},
-			{
-				Model:      gorm.Model{ID: 401},
-				SegmentID:  200,
-				VariantID:  301,
-				VariantKey: "treatment",
-				Percent:    50,
-			},
-		},
-	}
-	segment.PrepareEvaluation()
-
-	evalContext := models.EvalContext{
-		EnableDebug:   false,
-		EntityContext: map[string]interface{}{"dl_state": "CA"},
-		EntityID:      "entityID1",
-		EntityType:    "entityType1",
-		FlagID:        int64(100),
-	}
-	b.StartTimer()
-	for i := 0; i < b.N; i++ {
-		evalSegment(100, evalContext, segment)
-	}
-}
-
-func BenchmarkEvalSegmentDirectComplexContext(b *testing.B) {
-	b.StopTimer()
-	// Stub out dependencies to reduce noise in the output
-	defer gostub.StubFunc(&logEvalResult).Reset()
-
-	// Create a segment directly with a single constraint, similar to GenFixtureSegment
-	segment := entity.Segment{
-		Model:          gorm.Model{ID: 200},
-		FlagID:         100,
-		Description:    "",
-		Rank:           0,
-		RolloutPercent: 100,
-		Constraints: []entity.Constraint{
-			{
-				Model:     gorm.Model{ID: 500},
-				SegmentID: 200,
-				Property:  "dl_state",
-				Operator:  models.ConstraintOperatorEQ,
-				Value:     `"CA"`,
-			},
-		},
-		Distributions: []entity.Distribution{
-			{
-				Model:      gorm.Model{ID: 400},
-				SegmentID:  200,
-				VariantID:  300,
-				VariantKey: "control",
-				Percent:    50,
-			},
-			{
-				Model:      gorm.Model{ID: 401},
-				SegmentID:  200,
-				VariantID:  301,
-				VariantKey: "treatment",
-				Percent:    50,
-			},
-		},
-	}
-	segment.PrepareEvaluation()
-
-	// Use the same complex entity context as in BenchmarkEvalSegmentComplex
-	evalContext := models.EvalContext{
-		EnableDebug: false,
-		EntityContext: map[string]interface{}{
-			"dl_state":   "CA",
-			"age":        25,
-			"is_premium": true,
-			"tags":       []string{"alpha", "beta", "gamma"},
-			"email":      "user@example.com",
-		},
-		EntityID:   "entityID1",
-		EntityType: "entityType1",
-		FlagID:     int64(100),
-	}
-	b.StartTimer()
-	for i := 0; i < b.N; i++ {
-		evalSegment(100, evalContext, segment)
-	}
-}
-
-func BenchmarkEvalSegmentNoConstraints(b *testing.B) {
-	b.StopTimer()
-	// Stub out dependencies to reduce noise in the output
-	defer gostub.StubFunc(&logEvalResult).Reset()
-
-	// Create a segment with no constraints
-	segment := entity.Segment{
-		Model:          gorm.Model{ID: 200},
-		FlagID:         100,
-		Description:    "",
-		Rank:           0,
-		RolloutPercent: 100,
-		Constraints:    []entity.Constraint{}, // No constraints
-		Distributions: []entity.Distribution{
-			{
-				Model:      gorm.Model{ID: 400},
-				SegmentID:  200,
-				VariantID:  300,
-				VariantKey: "control",
-				Percent:    50,
-			},
-			{
-				Model:      gorm.Model{ID: 401},
-				SegmentID:  200,
-				VariantID:  301,
-				VariantKey: "treatment",
-				Percent:    50,
-			},
-		},
-	}
-	segment.PrepareEvaluation()
-
-	evalContext := models.EvalContext{
-		EnableDebug:   false,
-		EntityContext: map[string]interface{}{"dl_state": "CA"},
-		EntityID:      "entityID1",
-		EntityType:    "entityType1",
-		FlagID:        int64(100),
-	}
-	b.StartTimer()
-	for i := 0; i < b.N; i++ {
-		evalSegment(100, evalContext, segment)
-	}
-}
-
 func BenchmarkEvalSegmentComplexSimpleContext(b *testing.B) {
 	b.StopTimer()
 	// Stub out dependencies to reduce noise in the output
@@ -834,66 +657,6 @@ func BenchmarkEvalSegmentComplexSimpleContext(b *testing.B) {
 	}
 }
 
-func BenchmarkEvalSegmentSimpleComplexContext(b *testing.B) {
-	b.StopTimer()
-	// Stub out dependencies to reduce noise in the output
-	defer gostub.StubFunc(&logEvalResult).Reset()
-
-	// Create a segment with a single constraint
-	segment := entity.Segment{
-		Model:          gorm.Model{ID: 200},
-		FlagID:         100,
-		Description:    "",
-		Rank:           0,
-		RolloutPercent: 100,
-		Constraints: []entity.Constraint{
-			{
-				Model:     gorm.Model{ID: 500},
-				SegmentID: 200,
-				Property:  "dl_state",
-				Operator:  models.ConstraintOperatorEQ,
-				Value:     `"CA"`,
-			},
-		},
-		Distributions: []entity.Distribution{
-			{
-				Model:      gorm.Model{ID: 400},
-				SegmentID:  200,
-				VariantID:  300,
-				VariantKey: "control",
-				Percent:    50,
-			},
-			{
-				Model:      gorm.Model{ID: 401},
-				SegmentID:  200,
-				VariantID:  301,
-				VariantKey: "treatment",
-				Percent:    50,
-			},
-		},
-	}
-	segment.PrepareEvaluation()
-
-	// Use the same complex entity context as in BenchmarkEvalSegmentComplex
-	evalContext := models.EvalContext{
-		EnableDebug: false,
-		EntityContext: map[string]interface{}{
-			"dl_state":   "CA",
-			"age":        25,
-			"is_premium": true,
-			"tags":       []string{"alpha", "beta", "gamma"},
-			"email":      "user@example.com",
-		},
-		EntityID:   "entityID1",
-		EntityType: "entityType1",
-		FlagID:     int64(100),
-	}
-	b.StartTimer()
-	for i := 0; i < b.N; i++ {
-		evalSegment(100, evalContext, segment)
-	}
-}
-
 func BenchmarkEvalSegmentComplex(b *testing.B) {
 	b.StopTimer()
 	// Stub out dependencies to reduce noise in the output
@@ -925,7 +688,7 @@ func BenchmarkEvalSegmentComplex(b *testing.B) {
 				Model:     gorm.Model{ID: 503},
 				SegmentID: 200,
 				Property:  "is_premium",
-				Operator:  models.ConstraintOperatorEQ,
+				Operator:  models.ConstraintOperatorNEQ,
 				Value:     `true`,
 			},
 			{
@@ -934,6 +697,13 @@ func BenchmarkEvalSegmentComplex(b *testing.B) {
 				Property:  "tags",
 				Operator:  models.ConstraintOperatorCONTAINS,
 				Value:     `"beta"`,
+			},
+			{
+				Model:     gorm.Model{ID: 504},
+				SegmentID: 200,
+				Property:  "versions",
+				Operator:  models.ConstraintOperatorNOTCONTAINS,
+				Value:     "42",
 			},
 			{
 				Model:     gorm.Model{ID: 505},
@@ -960,16 +730,19 @@ func BenchmarkEvalSegmentComplex(b *testing.B) {
 			},
 		},
 	}
-	segment.PrepareEvaluation()
+	if err := segment.PrepareEvaluation(); err != nil {
+		b.Fatal(err)
+	}
 
 	// Create an evaluation context that matches all constraints
 	evalContext := models.EvalContext{
 		EnableDebug: false,
 		EntityContext: map[string]interface{}{
 			"dl_state":   "CA",
-			"age":        25,
+			"age":        25.,
 			"is_premium": true,
-			"tags":       []string{"alpha", "beta", "gamma"},
+			"tags":       []interface{}{"alpha", "beta", "gamma"},
+			"versions":   []interface{}{1, 2, 3, 4, 5, 42},
 			"email":      "user@example.com",
 		},
 		EntityID:   "entityID1",
