@@ -210,7 +210,7 @@ func TestEvalFlag(t *testing.T) {
 				SegmentID: 200,
 				Property:  "state",
 				Operator:  models.ConstraintOperatorEQ,
-				Value:     `{dl_state}`,
+				Value:     `"CA"`,
 			},
 			{
 				Model:     gorm.Model{ID: 502},
@@ -237,7 +237,7 @@ func TestEvalFlag(t *testing.T) {
 			EntityContext: map[string]interface{}{
 				"dl_state":  "CA",
 				"state":     "CA",
-				"rate":      2000,
+				"rate":      2000.,
 				"city-name": "SF",
 			},
 			EntityID:   "entityID1",
@@ -285,7 +285,7 @@ func TestEvalFlag(t *testing.T) {
 				SegmentID: 200,
 				Property:  "state",
 				Operator:  models.ConstraintOperatorEQ,
-				Value:     `{dl_state}`,
+				Value:     `"CA"`,
 			},
 		}
 		f.PrepareEvaluation()
@@ -572,5 +572,184 @@ func BenchmarkEvalFlagsByTags(b *testing.B) {
 			EntityType:    "entityType1",
 			FlagTags:      []string{"tag1", "tag2"},
 		})
+	}
+}
+
+func BenchmarkEvalSegmentComplexSimpleContext(b *testing.B) {
+	b.StopTimer()
+	// Stub out dependencies to reduce noise in the output
+	defer gostub.StubFunc(&logEvalResult).Reset()
+
+	// Create a segment with multiple complex constraints but use a simple entity context
+	segment := entity.Segment{
+		Model:          gorm.Model{ID: 200},
+		FlagID:         100,
+		Description:    "Complex segment for benchmarking",
+		Rank:           0,
+		RolloutPercent: 100,
+		Constraints: []entity.Constraint{
+			{
+				Model:     gorm.Model{ID: 501},
+				SegmentID: 200,
+				Property:  "dl_state",
+				Operator:  models.ConstraintOperatorEQ,
+				Value:     `"CA"`,
+			},
+			{
+				Model:     gorm.Model{ID: 502},
+				SegmentID: 200,
+				Property:  "age",
+				Operator:  models.ConstraintOperatorGTE,
+				Value:     `21`,
+			},
+			{
+				Model:     gorm.Model{ID: 503},
+				SegmentID: 200,
+				Property:  "is_premium",
+				Operator:  models.ConstraintOperatorEQ,
+				Value:     `true`,
+			},
+			{
+				Model:     gorm.Model{ID: 504},
+				SegmentID: 200,
+				Property:  "tags",
+				Operator:  models.ConstraintOperatorCONTAINS,
+				Value:     `"beta"`,
+			},
+			{
+				Model:     gorm.Model{ID: 505},
+				SegmentID: 200,
+				Property:  "email",
+				Operator:  models.ConstraintOperatorEREG,
+				Value:     `".*@example\\.com"`,
+			},
+		},
+		Distributions: []entity.Distribution{
+			{
+				Model:      gorm.Model{ID: 400},
+				SegmentID:  200,
+				VariantID:  300,
+				VariantKey: "control",
+				Percent:    50,
+			},
+			{
+				Model:      gorm.Model{ID: 401},
+				SegmentID:  200,
+				VariantID:  301,
+				VariantKey: "treatment",
+				Percent:    50,
+			},
+		},
+	}
+	segment.PrepareEvaluation()
+
+	// Use a simple entity context that doesn't match all constraints
+	evalContext := models.EvalContext{
+		EnableDebug:   false,
+		EntityContext: map[string]interface{}{"dl_state": "CA"},
+		EntityID:      "entityID1",
+		EntityType:    "entityType1",
+		FlagID:        int64(100),
+	}
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		evalSegment(100, evalContext, segment)
+	}
+}
+
+func BenchmarkEvalSegmentComplex(b *testing.B) {
+	b.StopTimer()
+	// Stub out dependencies to reduce noise in the output
+	defer gostub.StubFunc(&logEvalResult).Reset()
+
+	// Create a segment with multiple complex constraints
+	segment := entity.Segment{
+		Model:          gorm.Model{ID: 200},
+		FlagID:         100,
+		Description:    "Complex segment for benchmarking",
+		Rank:           0,
+		RolloutPercent: 100,
+		Constraints: []entity.Constraint{
+			{
+				Model:     gorm.Model{ID: 501},
+				SegmentID: 200,
+				Property:  "dl_state",
+				Operator:  models.ConstraintOperatorEQ,
+				Value:     `"CA"`,
+			},
+			{
+				Model:     gorm.Model{ID: 502},
+				SegmentID: 200,
+				Property:  "age",
+				Operator:  models.ConstraintOperatorGTE,
+				Value:     `21`,
+			},
+			{
+				Model:     gorm.Model{ID: 503},
+				SegmentID: 200,
+				Property:  "is_premium",
+				Operator:  models.ConstraintOperatorEQ,
+				Value:     `true`,
+			},
+			{
+				Model:     gorm.Model{ID: 504},
+				SegmentID: 200,
+				Property:  "tags",
+				Operator:  models.ConstraintOperatorCONTAINS,
+				Value:     `"beta"`,
+			},
+			{
+				Model:     gorm.Model{ID: 504},
+				SegmentID: 200,
+				Property:  "versions",
+				Operator:  models.ConstraintOperatorNOTCONTAINS,
+				Value:     "42",
+			},
+			{
+				Model:     gorm.Model{ID: 505},
+				SegmentID: 200,
+				Property:  "email",
+				Operator:  models.ConstraintOperatorEREG,
+				Value:     `".*@example\\.com"`,
+			},
+		},
+		Distributions: []entity.Distribution{
+			{
+				Model:      gorm.Model{ID: 400},
+				SegmentID:  200,
+				VariantID:  300,
+				VariantKey: "control",
+				Percent:    50,
+			},
+			{
+				Model:      gorm.Model{ID: 401},
+				SegmentID:  200,
+				VariantID:  301,
+				VariantKey: "treatment",
+				Percent:    50,
+			},
+		},
+	}
+	segment.PrepareEvaluation()
+
+	// Create an evaluation context that matches all constraints
+	evalContext := models.EvalContext{
+		EnableDebug: false,
+		EntityContext: map[string]interface{}{
+			"dl_state":   "CA",
+			"age":        25.,
+			"is_premium": true,
+			"tags":       []interface{}{"alpha", "beta", "gamma"},
+			"versions":   []interface{}{1, 2, 3, 4, 5},
+			"email":      "user@example.com",
+		},
+		EntityID:   "entityID1",
+		EntityType: "entityType1",
+		FlagID:     int64(100),
+	}
+
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		evalSegment(100, evalContext, segment)
 	}
 }

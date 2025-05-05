@@ -62,6 +62,11 @@ func (s *Segment) PrepareEvaluation() error {
 			return err
 		}
 		se.ConditionsExpr = expr
+		for i := range s.Constraints {
+			if err := s.Constraints[i].PrepareEvaluation(); err != nil {
+				return err
+			}
+		}
 	}
 
 	for i, d := range s.Distributions {
