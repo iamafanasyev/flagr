@@ -183,7 +183,11 @@ func (c *Constraint) ToMatchFunc() (func(entityContext map[string]interface{}) (
 			return actualValue >= targetValue, nil
 		}
 	case models.ConstraintOperatorEREG:
-		regex, err := regexp.Compile(strings.Trim(c.Value, " \""))
+		var regexString string
+		if err := json.Unmarshal([]byte(strings.Trim(c.Value, " ")), &regexString); err != nil {
+			return alwaysFalse, fmt.Errorf("%s constraint value should be escaped regex: %s", c.Property, err)
+		}
+		regex, err := regexp.Compile(regexString)
 		if err != nil {
 			return alwaysFalse, fmt.Errorf("invalid constraint regex: %s", err)
 		}
@@ -195,7 +199,11 @@ func (c *Constraint) ToMatchFunc() (func(entityContext map[string]interface{}) (
 			return regex.MatchString(actualValue), nil
 		}
 	case models.ConstraintOperatorNEREG:
-		regex, err := regexp.Compile(strings.Trim(c.Value, " \""))
+		var regexString string
+		if err := json.Unmarshal([]byte(strings.Trim(c.Value, " ")), &regexString); err != nil {
+			return alwaysFalse, fmt.Errorf("%s constraint value should be escaped regex: %s", c.Property, err)
+		}
+		regex, err := regexp.Compile(regexString)
 		if err != nil {
 			return alwaysFalse, fmt.Errorf("invalid constraint regex: %s", err)
 		}

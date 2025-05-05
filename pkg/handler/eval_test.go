@@ -710,7 +710,7 @@ func BenchmarkEvalSegmentComplex(b *testing.B) {
 				SegmentID: 200,
 				Property:  "email",
 				Operator:  models.ConstraintOperatorEREG,
-				Value:     `".*@example\\.com"`,
+				Value:     `"^.+@example\\.com$"`,
 			},
 		},
 		Distributions: []entity.Distribution{
@@ -736,12 +736,12 @@ func BenchmarkEvalSegmentComplex(b *testing.B) {
 	evalContext := models.EvalContext{
 		EnableDebug: false,
 		EntityContext: map[string]interface{}{
-			"dl_state":   "CA",
-			"age":        25.,
-			"is_premium": true,
-			"tags":       []interface{}{"alpha", "beta", "gamma"},
-			"versions":   []interface{}{1, 2, 3, 4, 5},
-			"email":      "user@example.com",
+			"dl_state": "CA",
+			"age":      25.,
+			//"is_premium": true,
+			"tags":     []interface{}{"alpha", "beta", "gamma"},
+			"versions": []interface{}{1, 2, 3, 4, 5},
+			"email":    "user@example.com",
 		},
 		EntityID:   "entityID1",
 		EntityType: "entityType1",

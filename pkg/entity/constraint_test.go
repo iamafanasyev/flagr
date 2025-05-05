@@ -323,7 +323,7 @@ func TestConstraintToMatchFunc(t *testing.T) {
 		c := Constraint{
 			Property: "email",
 			Operator: models.ConstraintOperatorEREG,
-			Value:    `"^.+@example\.com$"`,
+			Value:    `"^.+@example\\.com$"`,
 		}
 		matchFunc, err := c.ToMatchFunc()
 		assert.Nil(t, err)
@@ -344,7 +344,7 @@ func TestConstraintToMatchFunc(t *testing.T) {
 		c := Constraint{
 			Property: "email",
 			Operator: models.ConstraintOperatorNEREG,
-			Value:    `"^.+@example\.com$"`,
+			Value:    `"^.+@example\\.com$"`,
 		}
 		matchFunc, err := c.ToMatchFunc()
 		assert.Nil(t, err)
