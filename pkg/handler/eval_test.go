@@ -689,7 +689,7 @@ func BenchmarkEvalSegmentComplex(b *testing.B) {
 				SegmentID: 200,
 				Property:  "is_premium",
 				Operator:  models.ConstraintOperatorEQ,
-				Value:     "false",
+				Value:     "true",
 			},
 			//{
 			//	Model:     gorm.Model{ID: 504},
