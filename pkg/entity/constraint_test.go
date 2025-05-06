@@ -146,6 +146,30 @@ func TestConstraintToMatchFunc(t *testing.T) {
 		match, err = matchFunc(map[string]interface{}{"dl_state": 31})
 		assert.Nil(t, err)
 		assert.False(t, match)
+
+		c = Constraint{
+			Property: "special_symbol",
+			Operator: models.ConstraintOperatorEQ,
+			Value:    "\"\\\"\"",
+		}
+		matchFunc, err = c.ToMatchFunc()
+		assert.Nil(t, err)
+
+		match, err = matchFunc(map[string]interface{}{"special_symbol": `"`})
+		assert.Nil(t, err)
+		assert.True(t, match)
+
+		c = Constraint{
+			Property: "episode",
+			Operator: models.ConstraintOperatorEQ,
+			Value:    "\"The Computer Wore \\\"Menace\\\" Shoes\"",
+		}
+		matchFunc, err = c.ToMatchFunc()
+		assert.Nil(t, err)
+
+		match, err = matchFunc(map[string]interface{}{"episode": `The Computer Wore "Menace" Shoes`})
+		assert.Nil(t, err)
+		assert.True(t, match)
 	})
 	t.Run("eq numeric constraint", func(t *testing.T) {
 		c := Constraint{

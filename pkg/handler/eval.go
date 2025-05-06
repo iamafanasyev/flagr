@@ -276,14 +276,7 @@ var evalSegment = func(
 		}
 
 		expr := segment.SegmentEvaluation.ConditionsExpr
-		var match = true
-		var err error = nil
-		for i := range segment.Constraints {
-			match, err = segment.Constraints[i].Match(m)
-			if err != nil || !match {
-				break
-			}
-		}
+		match, err := segment.Constraints.Match(m)
 		if err != nil {
 			log = &models.SegmentDebugLog{
 				Msg:       err.Error(),

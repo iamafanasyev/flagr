@@ -2,18 +2,18 @@ package handler
 
 import (
 	"fmt"
+	"github.com/dchest/uniuri"
+	"github.com/openflagr/flagr/pkg/util"
+	"github.com/openflagr/flagr/swagger_gen/restapi/operations/evaluation"
+	"github.com/prashantv/gostub"
+	"github.com/stretchr/testify/assert"
+	"github.com/zhouzhuojie/conditions"
+	"gorm.io/gorm"
 	"math"
 	"testing"
 
-	"github.com/dchest/uniuri"
 	"github.com/openflagr/flagr/pkg/entity"
-	"github.com/openflagr/flagr/pkg/util"
 	"github.com/openflagr/flagr/swagger_gen/models"
-	"github.com/openflagr/flagr/swagger_gen/restapi/operations/evaluation"
-
-	"github.com/prashantv/gostub"
-	"github.com/stretchr/testify/assert"
-	"gorm.io/gorm"
 )
 
 func TestEvalSegment(t *testing.T) {
@@ -657,12 +657,183 @@ func BenchmarkEvalSegmentComplexSimpleContext(b *testing.B) {
 	}
 }
 
+func BenchmarkSegmentExprEval(b *testing.B) {
+	b.StopTimer()
+	s := entity.Segment{
+		Constraints: []entity.Constraint{
+			{
+				Property: "dl_state",
+				Operator: models.ConstraintOperatorEQ,
+				Value:    `"CA"`,
+			},
+			{
+				Property: "dl_state",
+				Operator: models.ConstraintOperatorNEQ,
+				Value:    `"NY"`,
+			},
+			{
+				Property: "age",
+				Operator: models.ConstraintOperatorLT,
+				Value:    "100",
+			},
+			{
+				Property: "age",
+				Operator: models.ConstraintOperatorLTE,
+				Value:    "25",
+			},
+			{
+				Property: "age",
+				Operator: models.ConstraintOperatorGT,
+				Value:    "18",
+			},
+			{
+				Property: "age",
+				Operator: models.ConstraintOperatorGTE,
+				Value:    "25",
+			},
+			{
+				Property: "email",
+				Operator: models.ConstraintOperatorEREG,
+				Value:    "\".+@example\\.com\"",
+			},
+			{
+				Property: "email",
+				Operator: models.ConstraintOperatorNEREG,
+				Value:    "\"^.+@mail\\.com$\"",
+			},
+			{
+				Property: "tag",
+				Operator: models.ConstraintOperatorIN,
+				Value:    `["alpha", "beta"]`,
+			},
+			{
+				Property: "tag",
+				Operator: models.ConstraintOperatorNOTIN,
+				Value:    `["gamma", "delta"]`,
+			},
+			{
+				Property: "versions",
+				Operator: models.ConstraintOperatorCONTAINS,
+				Value:    "3",
+			},
+			{
+				Property: "versions",
+				Operator: models.ConstraintOperatorNOTCONTAINS,
+				Value:    "6",
+			},
+		},
+	}
+	expr, err := s.Constraints.ToExpr()
+	if err != nil {
+		b.Fatal(err)
+	}
+	entityContext := map[string]interface{}{
+		"dl_state": "CA",
+		"age":      25,
+		"email":    "user@example.com",
+		"tag":      "beta",
+		"versions": []interface{}{1., 2., 3., 4., 5.},
+	}
+
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := conditions.Evaluate(expr, entityContext)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkSegmentConstraintsMatchEval(b *testing.B) {
+	b.StopTimer()
+	s := entity.Segment{
+		Constraints: []entity.Constraint{
+			{
+				Property: "dl_state",
+				Operator: models.ConstraintOperatorEQ,
+				Value:    `"CA"`,
+			},
+			{
+				Property: "dl_state",
+				Operator: models.ConstraintOperatorNEQ,
+				Value:    `"NY"`,
+			},
+			{
+				Property: "age",
+				Operator: models.ConstraintOperatorLT,
+				Value:    "100",
+			},
+			{
+				Property: "age",
+				Operator: models.ConstraintOperatorLTE,
+				Value:    "25",
+			},
+			{
+				Property: "age",
+				Operator: models.ConstraintOperatorGT,
+				Value:    "18",
+			},
+			{
+				Property: "age",
+				Operator: models.ConstraintOperatorGTE,
+				Value:    "25",
+			},
+			{
+				Property: "email",
+				Operator: models.ConstraintOperatorEREG,
+				Value:    `".+@example\\.com"`,
+			},
+			{
+				Property: "email",
+				Operator: models.ConstraintOperatorNEREG,
+				Value:    `"^.+@mail\\.com$"`,
+			},
+			{
+				Property: "tag",
+				Operator: models.ConstraintOperatorIN,
+				Value:    `["alpha", "beta"]`,
+			},
+			{
+				Property: "tag",
+				Operator: models.ConstraintOperatorNOTIN,
+				Value:    `["gamma", "delta"]`,
+			},
+			{
+				Property: "versions",
+				Operator: models.ConstraintOperatorCONTAINS,
+				Value:    "3",
+			},
+			{
+				Property: "versions",
+				Operator: models.ConstraintOperatorNOTCONTAINS,
+				Value:    "6",
+			},
+		},
+	}
+	err := s.PrepareEvaluation()
+	if err != nil {
+		b.Fatal(err)
+	}
+	entityContext := map[string]interface{}{
+		"dl_state": "CA",
+		"age":      25,
+		"email":    "user@example.com",
+		"tag":      "beta",
+		"versions": []interface{}{1, 2, 3, 4, 5},
+	}
+
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := s.Constraints.Match(entityContext)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 func BenchmarkEvalSegmentComplex(b *testing.B) {
 	b.StopTimer()
-	// Stub out dependencies to reduce noise in the output
-	defer gostub.StubFunc(&logEvalResult).Reset()
 
-	// Create a segment with multiple complex constraints
 	segment := entity.Segment{
 		Model:          gorm.Model{ID: 200},
 		FlagID:         100,
@@ -691,27 +862,27 @@ func BenchmarkEvalSegmentComplex(b *testing.B) {
 				Operator:  models.ConstraintOperatorEQ,
 				Value:     "true",
 			},
-			//{
-			//	Model:     gorm.Model{ID: 504},
-			//	SegmentID: 200,
-			//	Property:  "tags",
-			//	Operator:  models.ConstraintOperatorCONTAINS,
-			//	Value:     `"beta"`,
-			//},
-			//{
-			//	Model:     gorm.Model{ID: 504},
-			//	SegmentID: 200,
-			//	Property:  "versions",
-			//	Operator:  models.ConstraintOperatorNOTCONTAINS,
-			//	Value:     "42",
-			//},
-			//{
-			//	Model:     gorm.Model{ID: 505},
-			//	SegmentID: 200,
-			//	Property:  "email",
-			//	Operator:  models.ConstraintOperatorEREG,
-			//	Value:     `"^.+@example\\.com$"`,
-			//},
+			{
+				Model:     gorm.Model{ID: 504},
+				SegmentID: 200,
+				Property:  "tags",
+				Operator:  models.ConstraintOperatorCONTAINS,
+				Value:     `"beta"`,
+			},
+			{
+				Model:     gorm.Model{ID: 504},
+				SegmentID: 200,
+				Property:  "versions",
+				Operator:  models.ConstraintOperatorNOTCONTAINS,
+				Value:     "42",
+			},
+			{
+				Model:     gorm.Model{ID: 505},
+				SegmentID: 200,
+				Property:  "email",
+				Operator:  models.ConstraintOperatorEREG,
+				Value:     `"^.+@example\\.com$"`,
+			},
 		},
 		Distributions: []entity.Distribution{
 			{
@@ -734,24 +905,20 @@ func BenchmarkEvalSegmentComplex(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	// Create an evaluation context that matches all constraints
-	evalContext := models.EvalContext{
-		EnableDebug: false,
-		EntityContext: map[string]interface{}{
-			"dl_state":   "CA",
-			"age":        25,
-			"is_premium": true,
-			"tags":       []interface{}{"alpha", "beta", "gamma"},
-			"versions":   []interface{}{1, 2, 3, 4, 5},
-			"email":      "user@example.com",
-		},
-		EntityID:   "entityID1",
-		EntityType: "entityType1",
-		FlagID:     int64(100),
+	entityContext := map[string]interface{}{
+		"dl_state":   "CA",
+		"age":        25,
+		"is_premium": true,
+		"tags":       []interface{}{"alpha", "beta", "gamma"},
+		"versions":   []interface{}{1, 2, 3, 4, 5},
+		"email":      "user@example.com",
 	}
 
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		evalSegment(100, evalContext, segment)
+		_, err := segment.Constraints.Match(entityContext)
+		if err != nil {
+			b.Fatal(err)
+		}
 	}
 }
