@@ -682,14 +682,14 @@ func BenchmarkEvalSegmentComplex(b *testing.B) {
 				SegmentID: 200,
 				Property:  "age",
 				Operator:  models.ConstraintOperatorGTE,
-				Value:     `21`,
+				Value:     "21",
 			},
 			{
 				Model:     gorm.Model{ID: 503},
 				SegmentID: 200,
 				Property:  "is_premium",
 				Operator:  models.ConstraintOperatorEQ,
-				Value:     `true`,
+				Value:     "true",
 			},
 			{
 				Model:     gorm.Model{ID: 504},
@@ -730,18 +730,20 @@ func BenchmarkEvalSegmentComplex(b *testing.B) {
 			},
 		},
 	}
-	segment.PrepareEvaluation()
+	if err := segment.PrepareEvaluation(); err != nil {
+		b.Fatal(err)
+	}
 
 	// Create an evaluation context that matches all constraints
 	evalContext := models.EvalContext{
 		EnableDebug: false,
 		EntityContext: map[string]interface{}{
-			"dl_state": "CA",
-			"age":      25.,
-			//"is_premium": true,
-			"tags":     []interface{}{"alpha", "beta", "gamma"},
-			"versions": []interface{}{1, 2, 3, 4, 5},
-			"email":    "user@example.com",
+			"dl_state":   "CA",
+			"age":        25,
+			"is_premium": true,
+			"tags":       []interface{}{"alpha", "beta", "gamma"},
+			"versions":   []interface{}{1, 2, 3, 4, 5},
+			"email":      "user@example.com",
 		},
 		EntityID:   "entityID1",
 		EntityType: "entityType1",

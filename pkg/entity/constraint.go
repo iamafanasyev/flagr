@@ -3,7 +3,6 @@ package entity
 import (
 	"encoding/json"
 	"fmt"
-	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -121,27 +120,83 @@ func (c *Constraint) ToMatchFunc() (func(entityContext map[string]interface{}) (
 	case models.ConstraintOperatorEQ:
 		var targetValue interface{}
 		if err := json.Unmarshal([]byte(strings.Trim(c.Value, " ")), &targetValue); err != nil {
-			return alwaysFalse, fmt.Errorf("invalid constraint value: %s", err)
+			return alwaysFalse, fmt.Errorf("invalid eq constraint target value: %s", err)
 		}
-		propertyPredicate = func(propertyValue interface{}) (bool, error) {
-			return reflect.DeepEqual(propertyValue, targetValue), nil
+		switch targetValue.(type) {
+		case float64:
+			propertyPredicate = func(propertyValue interface{}) (bool, error) {
+				actualValue, err := AsFloat64(propertyValue)
+				if err != nil {
+					return false, nil
+				}
+				return actualValue == targetValue, nil
+			}
+			break
+		case string:
+			propertyPredicate = func(propertyValue interface{}) (bool, error) {
+				actualValue, ok := propertyValue.(string)
+				if !ok {
+					return false, nil
+				}
+				return actualValue == targetValue, nil
+			}
+			break
+		case bool:
+			propertyPredicate = func(propertyValue interface{}) (bool, error) {
+				actualValue, ok := propertyValue.(bool)
+				if !ok {
+					return false, nil
+				}
+				return actualValue == targetValue, nil
+			}
+			break
+		default:
+			return alwaysFalse, fmt.Errorf("unsupported eq constraint target value type: %T", targetValue)
 		}
 	case models.ConstraintOperatorNEQ:
 		var targetValue interface{}
 		if err := json.Unmarshal([]byte(strings.Trim(c.Value, " ")), &targetValue); err != nil {
-			return alwaysFalse, fmt.Errorf("invalid constraint value: %s", err)
+			return alwaysFalse, fmt.Errorf("invalid eq constraint target value: %s", err)
 		}
-		propertyPredicate = func(propertyValue interface{}) (bool, error) {
-			return !reflect.DeepEqual(propertyValue, targetValue), nil
+		switch targetValue.(type) {
+		case float64:
+			propertyPredicate = func(propertyValue interface{}) (bool, error) {
+				actualValue, err := AsFloat64(propertyValue)
+				if err != nil {
+					return true, nil
+				}
+				return actualValue != targetValue, nil
+			}
+			break
+		case string:
+			propertyPredicate = func(propertyValue interface{}) (bool, error) {
+				actualValue, ok := propertyValue.(string)
+				if !ok {
+					return true, nil
+				}
+				return actualValue != targetValue, nil
+			}
+			break
+		case bool:
+			propertyPredicate = func(propertyValue interface{}) (bool, error) {
+				actualValue, ok := propertyValue.(bool)
+				if !ok {
+					return true, nil
+				}
+				return actualValue != targetValue, nil
+			}
+			break
+		default:
+			return alwaysFalse, fmt.Errorf("unsupported eq constraint target value type: %T", targetValue)
 		}
 	case models.ConstraintOperatorLT:
 		targetValue, err := strconv.ParseFloat(strings.Trim(c.Value, " "), 64)
 		if err != nil {
-			return alwaysFalse, fmt.Errorf("invalid constraint float value: %s", err)
+			return alwaysFalse, fmt.Errorf("invalid lt constraint target value: %s", err)
 		}
 		propertyPredicate = func(propertyValue interface{}) (bool, error) {
-			actualValue, ok := propertyValue.(float64)
-			if !ok {
+			actualValue, err := AsFloat64(propertyValue)
+			if err != nil {
 				return false, nil
 			}
 			return actualValue < targetValue, nil
@@ -149,11 +204,11 @@ func (c *Constraint) ToMatchFunc() (func(entityContext map[string]interface{}) (
 	case models.ConstraintOperatorLTE:
 		targetValue, err := strconv.ParseFloat(strings.Trim(c.Value, " "), 64)
 		if err != nil {
-			return alwaysFalse, fmt.Errorf("invalid constraint float value: %s", err)
+			return alwaysFalse, fmt.Errorf("invalid lte constraint target value: %s", err)
 		}
 		propertyPredicate = func(propertyValue interface{}) (bool, error) {
-			actualValue, ok := propertyValue.(float64)
-			if !ok {
+			actualValue, err := AsFloat64(propertyValue)
+			if err != nil {
 				return false, nil
 			}
 			return actualValue <= targetValue, nil
@@ -161,11 +216,11 @@ func (c *Constraint) ToMatchFunc() (func(entityContext map[string]interface{}) (
 	case models.ConstraintOperatorGT:
 		targetValue, err := strconv.ParseFloat(strings.Trim(c.Value, " "), 64)
 		if err != nil {
-			return alwaysFalse, fmt.Errorf("invalid constraint float value: %s", err)
+			return alwaysFalse, fmt.Errorf("invalid gt constraint target value: %s", err)
 		}
 		propertyPredicate = func(propertyValue interface{}) (bool, error) {
-			actualValue, ok := propertyValue.(float64)
-			if !ok {
+			actualValue, err := AsFloat64(propertyValue)
+			if err != nil {
 				return false, nil
 			}
 			return actualValue > targetValue, nil
@@ -173,11 +228,11 @@ func (c *Constraint) ToMatchFunc() (func(entityContext map[string]interface{}) (
 	case models.ConstraintOperatorGTE:
 		targetValue, err := strconv.ParseFloat(strings.Trim(c.Value, " "), 64)
 		if err != nil {
-			return alwaysFalse, fmt.Errorf("invalid constraint float value: %s", err)
+			return alwaysFalse, fmt.Errorf("invalid gte constraint target value: %s", err)
 		}
 		propertyPredicate = func(propertyValue interface{}) (bool, error) {
-			actualValue, ok := propertyValue.(float64)
-			if !ok {
+			actualValue, err := AsFloat64(propertyValue)
+			if err != nil {
 				return false, nil
 			}
 			return actualValue >= targetValue, nil
@@ -185,11 +240,11 @@ func (c *Constraint) ToMatchFunc() (func(entityContext map[string]interface{}) (
 	case models.ConstraintOperatorEREG:
 		var regexString string
 		if err := json.Unmarshal([]byte(strings.Trim(c.Value, " ")), &regexString); err != nil {
-			return alwaysFalse, fmt.Errorf("%s constraint value should be escaped regex: %s", c.Property, err)
+			return alwaysFalse, fmt.Errorf("%s ereg constraint value should be escaped regex: %s", c.Property, err)
 		}
 		regex, err := regexp.Compile(regexString)
 		if err != nil {
-			return alwaysFalse, fmt.Errorf("invalid constraint regex: %s", err)
+			return alwaysFalse, fmt.Errorf("invalid ereg constraint regex: %s", err)
 		}
 		propertyPredicate = func(propertyValue interface{}) (bool, error) {
 			actualValue, ok := propertyValue.(string)
@@ -201,11 +256,11 @@ func (c *Constraint) ToMatchFunc() (func(entityContext map[string]interface{}) (
 	case models.ConstraintOperatorNEREG:
 		var regexString string
 		if err := json.Unmarshal([]byte(strings.Trim(c.Value, " ")), &regexString); err != nil {
-			return alwaysFalse, fmt.Errorf("%s constraint value should be escaped regex: %s", c.Property, err)
+			return alwaysFalse, fmt.Errorf("%s nereg constraint value should be escaped regex: %s", c.Property, err)
 		}
 		regex, err := regexp.Compile(regexString)
 		if err != nil {
-			return alwaysFalse, fmt.Errorf("invalid constraint regex: %s", err)
+			return alwaysFalse, fmt.Errorf("invalid nereg constraint regex: %s", err)
 		}
 		propertyPredicate = func(propertyValue interface{}) (bool, error) {
 			actualValue, ok := propertyValue.(string)
@@ -217,62 +272,174 @@ func (c *Constraint) ToMatchFunc() (func(entityContext map[string]interface{}) (
 	case models.ConstraintOperatorIN:
 		var targetValues []interface{}
 		if err := json.Unmarshal([]byte(strings.Trim(c.Value, " ")), &targetValues); err != nil {
-			return alwaysFalse, fmt.Errorf("invalid constraint array value: %s", err)
+			return alwaysFalse, fmt.Errorf("invalid in constraint target value: %s", err)
 		}
 		propertyPredicate = func(propertyValue interface{}) (bool, error) {
-			for i := range targetValues {
-				if reflect.DeepEqual(propertyValue, targetValues[i]) {
-					return true, nil
-				}
-			}
 			return false, nil
+		}
+		for i := range targetValues {
+			switch targetValues[i].(type) {
+			case float64:
+				propertyPredicate = func(propertyValue interface{}) (bool, error) {
+					actualValue, err := AsFloat64(propertyValue)
+					if err != nil {
+						return false, nil
+					}
+					for j := range targetValues {
+						if targetValues[j] == actualValue {
+							return true, nil
+						}
+					}
+					return false, nil
+				}
+				break
+			case string:
+				propertyPredicate = func(propertyValue interface{}) (bool, error) {
+					actualValue, ok := propertyValue.(string)
+					if !ok {
+						return false, nil
+					}
+					for j := range targetValues {
+						if targetValues[j] == actualValue {
+							return true, nil
+						}
+					}
+					return false, nil
+				}
+				break
+			default:
+				return alwaysFalse, fmt.Errorf("unsupported in constraint target value type: %T", targetValues[i])
+			}
 		}
 	case models.ConstraintOperatorNOTIN:
 		var targetValues []interface{}
 		if err := json.Unmarshal([]byte(strings.Trim(c.Value, " ")), &targetValues); err != nil {
-			return alwaysFalse, fmt.Errorf("invalid constraint array value: %s", err)
+			return alwaysFalse, fmt.Errorf("invalid notin constraint target value: %s", err)
 		}
 		propertyPredicate = func(propertyValue interface{}) (bool, error) {
-			for i := range targetValues {
-				if reflect.DeepEqual(propertyValue, targetValues[i]) {
-					return false, nil
-				}
-			}
 			return true, nil
+		}
+		for i := range targetValues {
+			switch targetValues[i].(type) {
+			case float64:
+				propertyPredicate = func(propertyValue interface{}) (bool, error) {
+					actualValue, err := AsFloat64(propertyValue)
+					if err != nil {
+						return true, nil
+					}
+					for j := range targetValues {
+						if targetValues[j] == actualValue {
+							return false, nil
+						}
+					}
+					return true, nil
+				}
+				break
+			case string:
+				propertyPredicate = func(propertyValue interface{}) (bool, error) {
+					actualValue, ok := propertyValue.(string)
+					if !ok {
+						return true, nil
+					}
+					for j := range targetValues {
+						if targetValues[j] == actualValue {
+							return false, nil
+						}
+					}
+					return true, nil
+				}
+				break
+			default:
+				return alwaysFalse, fmt.Errorf("unsupported notin constraint target value type: %T", targetValues[i])
+			}
 		}
 	case models.ConstraintOperatorCONTAINS:
 		var targetValue interface{}
 		if err := json.Unmarshal([]byte(strings.Trim(c.Value, " ")), &targetValue); err != nil {
-			return alwaysFalse, fmt.Errorf("invalid constraint value: %s", err)
+			return alwaysFalse, fmt.Errorf("invalid contains constraint value: %s", err)
 		}
 		propertyPredicate = func(propertyValue interface{}) (bool, error) {
-			actualValues, ok := propertyValue.([]interface{})
-			if !ok {
-				return false, fmt.Errorf("%s entity_context value is not a slice: %v", c.Property, propertyValue)
-			}
-			for i := range actualValues {
-				if reflect.DeepEqual(actualValues[i], targetValue) {
-					return true, nil
-				}
-			}
 			return false, nil
+		}
+		switch targetValue.(type) {
+		case float64:
+			propertyPredicate = func(propertyValue interface{}) (bool, error) {
+				actualValues, ok := propertyValue.([]interface{})
+				if !ok {
+					return false, nil
+				}
+				for i := range actualValues {
+					if actualValue, err := AsFloat64(actualValues[i]); err == nil {
+						if actualValue == targetValue {
+							return true, nil
+						}
+					}
+				}
+				return false, nil
+			}
+			break
+		case string:
+			propertyPredicate = func(propertyValue interface{}) (bool, error) {
+				actualValues, ok := propertyValue.([]interface{})
+				if !ok {
+					return false, nil
+				}
+				for i := range actualValues {
+					if actualValue, ok := actualValues[i].(string); ok {
+						if actualValue == targetValue {
+							return true, nil
+						}
+					}
+				}
+				return false, nil
+			}
+			break
+		default:
+			return alwaysFalse, fmt.Errorf("unsupported contains constraint target value type: %T", targetValue)
 		}
 	case models.ConstraintOperatorNOTCONTAINS:
 		var targetValue interface{}
 		if err := json.Unmarshal([]byte(strings.Trim(c.Value, " ")), &targetValue); err != nil {
-			return alwaysFalse, fmt.Errorf("invalid constraint value: %s", err)
+			return alwaysFalse, fmt.Errorf("invalid notcontains constraint value: %s", err)
 		}
 		propertyPredicate = func(propertyValue interface{}) (bool, error) {
-			actualValues, ok := propertyValue.([]interface{})
-			if !ok {
-				return false, fmt.Errorf("%s entity_context value is not a slice: %v", c.Property, propertyValue)
-			}
-			for i := range actualValues {
-				if reflect.DeepEqual(actualValues[i], targetValue) {
-					return false, nil
-				}
-			}
 			return true, nil
+		}
+		switch targetValue.(type) {
+		case float64:
+			propertyPredicate = func(propertyValue interface{}) (bool, error) {
+				actualValues, ok := propertyValue.([]interface{})
+				if !ok {
+					return true, nil
+				}
+				for i := range actualValues {
+					if actualValue, err := AsFloat64(actualValues[i]); err == nil {
+						if actualValue == targetValue {
+							return false, nil
+						}
+					}
+				}
+				return true, nil
+			}
+			break
+		case string:
+			propertyPredicate = func(propertyValue interface{}) (bool, error) {
+				actualValues, ok := propertyValue.([]interface{})
+				if !ok {
+					return true, nil
+				}
+				for i := range actualValues {
+					if actualValue, ok := actualValues[i].(string); ok {
+						if actualValue == targetValue {
+							return false, nil
+						}
+					}
+				}
+				return true, nil
+			}
+			break
+		default:
+			return alwaysFalse, fmt.Errorf("unsupported notcontains constraint target value type: %T", targetValue)
 		}
 	}
 
@@ -283,4 +450,14 @@ func (c *Constraint) ToMatchFunc() (func(entityContext map[string]interface{}) (
 		}
 		return propertyPredicate(propertyValue)
 	}, nil
+}
+
+func AsFloat64(v interface{}) (float64, error) {
+	switch v.(type) {
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+		return float64(v.(int)), nil
+	case float32, float64:
+		return v.(float64), nil
+	}
+	return 0, fmt.Errorf("value is not a numeric: %v", v)
 }
