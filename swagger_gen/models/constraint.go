@@ -36,7 +36,7 @@ type Constraint struct {
 	// Min Length: 1
 	Property *string `json:"property"`
 
-	// value
+	// json encoded value. EQ/NEQ support bool, numeric, string values ("true", "42", "0.5", "\"foobar\""). LT/LTE/GT/GTE support numeric values ("42", "0.5"). EREG/NEREG support string values ("\"^.+@example\\\\.com$\""). IN/NOTIN support numeric array, string array values ("[1, 2, 3]", "[\"foo\", \"bar\", \"baz\"]"). CONTAINS/NOTCONTAINS support numeric, string values ("42", "0.5", "\"foobar\"").
 	// Required: true
 	// Min Length: 1
 	Value *string `json:"value"`

@@ -10,6 +10,7 @@ import (
 	"github.com/zhouzhuojie/conditions"
 	"gorm.io/gorm"
 	"math"
+	"os"
 	"testing"
 
 	"github.com/openflagr/flagr/pkg/entity"
@@ -599,6 +600,27 @@ func BenchmarkEvalFlagsByTags(b *testing.B) {
 	}
 }
 
+func BenchmarkEvalComplexFlagsByTags(b *testing.B) {
+	b.StopTimer()
+	defer gostub.StubFunc(&logEvalResult).Reset()
+	defer gostub.StubFunc(&GetEvalCache, GenFixtureComplexEvalCache()).Reset()
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		EvalFlagsByTags(models.EvalContext{
+			EntityContext: map[string]interface{}{
+				"dl_state": "CA",
+				"age":      25,
+				"email":    "my@example.com",
+				"tag":      "beta",
+				"versions": []interface{}{1., 2., 3., 4., 5.},
+			},
+			EntityID:   "entityID1",
+			EntityType: "entityType1",
+			FlagTags:   []string{"tag1", "tag2"},
+		})
+	}
+}
+
 func BenchmarkSegmentExprEval(b *testing.B) {
 	b.StopTimer()
 	s := entity.Segment{
@@ -665,6 +687,7 @@ func BenchmarkSegmentExprEval(b *testing.B) {
 			},
 		},
 	}
+	defer gostub.Stub(&os.Stderr, os.NewFile(0, os.DevNull)).Reset()
 	expr, err := s.Constraints.ToExpr()
 	if err != nil {
 		b.Fatal(err)
@@ -768,6 +791,33 @@ func BenchmarkSegmentConstraintsMatchEval(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		match, err := s.Constraints.Match(entityContext)
 		if err != nil || !match {
+			b.Fatal()
+		}
+	}
+}
+
+func BenchmarkEvalSegment(b *testing.B) {
+	b.StopTimer()
+	defer gostub.StubFunc(&logEvalResult).Reset()
+	defer gostub.StubFunc(&GetEvalCache, GenFixtureComplexEvalCache()).Reset()
+	s := entity.GenFixtureComplexSegment()
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		vID, _, _ := evalSegment(
+			100,
+			models.EvalContext{
+				FlagID:   100,
+				EntityID: "entityID1",
+				EntityContext: map[string]interface{}{
+					"dl_state": "CA",
+					"age":      25,
+					"email":    "my@example.com",
+					"tag":      "beta",
+					"versions": []interface{}{1., 2., 3., 4., 5.},
+				},
+			},
+			s)
+		if vID == nil {
 			b.Fatal()
 		}
 	}

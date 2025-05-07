@@ -1426,6 +1426,7 @@ func init() {
           "minLength": 1
         },
         "value": {
+          "description": "json encoded value. EQ/NEQ support bool, numeric, string values (\"true\", \"42\", \"0.5\", \"\\\"foobar\\\"\"). LT/LTE/GT/GTE support numeric values (\"42\", \"0.5\"). EREG/NEREG support string values (\"\\\"^.+@example\\\\\\\\.com$\\\"\"). IN/NOTIN support numeric array, string array values (\"[1, 2, 3]\", \"[\\\"foo\\\", \\\"bar\\\", \\\"baz\\\"]\"). CONTAINS/NOTCONTAINS support numeric, string values (\"42\", \"0.5\", \"\\\"foobar\\\"\").",
           "type": "string",
           "minLength": 1
         }
@@ -3515,6 +3516,7 @@ func init() {
           "minLength": 1
         },
         "value": {
+          "description": "json encoded value. EQ/NEQ support bool, numeric, string values (\"true\", \"42\", \"0.5\", \"\\\"foobar\\\"\"). LT/LTE/GT/GTE support numeric values (\"42\", \"0.5\"). EREG/NEREG support string values (\"\\\"^.+@example\\\\\\\\.com$\\\"\"). IN/NOTIN support numeric array, string array values (\"[1, 2, 3]\", \"[\\\"foo\\\", \\\"bar\\\", \\\"baz\\\"]\"). CONTAINS/NOTCONTAINS support numeric, string values (\"42\", \"0.5\", \"\\\"foobar\\\"\").",
           "type": "string",
           "minLength": 1
         }
