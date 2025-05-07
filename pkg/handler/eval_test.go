@@ -560,6 +560,30 @@ func BenchmarkEvalFlag(b *testing.B) {
 	}
 }
 
+func BenchmarkEvalComplexFlag(b *testing.B) {
+	b.StopTimer()
+	defer gostub.StubFunc(&logEvalResult).Reset()
+	defer gostub.StubFunc(&GetEvalCache, GenFixtureComplexEvalCache()).Reset()
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		r := EvalFlag(models.EvalContext{
+			EntityContext: map[string]interface{}{
+				"dl_state": "CA",
+				"age":      25,
+				"email":    "my@example.com",
+				"tag":      "beta",
+				"versions": []interface{}{1., 2., 3., 4., 5.},
+			},
+			EntityID:   "entityID1",
+			EntityType: "entityType1",
+			FlagID:     int64(100),
+		})
+		if r.VariantKey != "control" {
+			b.Fatal("unexpected variant key:", r.VariantKey)
+		}
+	}
+}
+
 func BenchmarkEvalFlagsByTags(b *testing.B) {
 	b.StopTimer()
 	defer gostub.StubFunc(&logEvalResult).Reset()
