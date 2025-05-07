@@ -310,7 +310,7 @@ func TestConstraintToMatchFunc(t *testing.T) {
 		_, err := c.ToMatchFunc()
 		assert.NotNil(t, err)
 	})
-	t.Run("lt constraint", func(t *testing.T) {
+	t.Run("lt numeric constraint", func(t *testing.T) {
 		c := Constraint{
 			Property: "age",
 			Operator: models.ConstraintOperatorLT,
@@ -372,7 +372,7 @@ func TestConstraintToMatchFunc(t *testing.T) {
 		_, err = c.ToMatchFunc()
 		assert.NotNil(t, err)
 	})
-	t.Run("lte constraint", func(t *testing.T) {
+	t.Run("lte numeric constraint", func(t *testing.T) {
 		c := Constraint{
 			Property: "age",
 			Operator: models.ConstraintOperatorLTE,
@@ -438,7 +438,7 @@ func TestConstraintToMatchFunc(t *testing.T) {
 		_, err = c.ToMatchFunc()
 		assert.NotNil(t, err)
 	})
-	t.Run("gt constraint", func(t *testing.T) {
+	t.Run("gt numeric constraint", func(t *testing.T) {
 		c := Constraint{
 			Property: "age",
 			Operator: models.ConstraintOperatorGT,
@@ -504,7 +504,7 @@ func TestConstraintToMatchFunc(t *testing.T) {
 		_, err = c.ToMatchFunc()
 		assert.NotNil(t, err)
 	})
-	t.Run("gte constraint", func(t *testing.T) {
+	t.Run("gte numeric constraint", func(t *testing.T) {
 		c := Constraint{
 			Property: "age",
 			Operator: models.ConstraintOperatorGTE,
@@ -570,7 +570,7 @@ func TestConstraintToMatchFunc(t *testing.T) {
 		_, err = c.ToMatchFunc()
 		assert.NotNil(t, err)
 	})
-	t.Run("ereg constraint", func(t *testing.T) {
+	t.Run("ereg string constraint", func(t *testing.T) {
 		c := Constraint{
 			Property: "email",
 			Operator: models.ConstraintOperatorEREG,
@@ -616,7 +616,7 @@ func TestConstraintToMatchFunc(t *testing.T) {
 		_, err = c.ToMatchFunc()
 		assert.NotNil(t, err)
 	})
-	t.Run("nereg constraint", func(t *testing.T) {
+	t.Run("nereg string constraint", func(t *testing.T) {
 		c := Constraint{
 			Property: "email",
 			Operator: models.ConstraintOperatorNEREG,
@@ -1012,5 +1012,64 @@ func TestConstraintToMatchFunc(t *testing.T) {
 		match, err = matchFunc(map[string]interface{}{"tags": []interface{}{"1", "2"}})
 		assert.Nil(t, err)
 		assert.True(t, match)
+	})
+	t.Run("notcontains unsupported constraint target value", func(t *testing.T) {
+		c := Constraint{
+			Property: "tags",
+			Operator: models.ConstraintOperatorNOTCONTAINS,
+			Value:    `true`,
+		}
+		_, err := c.ToMatchFunc()
+		assert.NotNil(t, err)
+
+		c = Constraint{
+			Property: "tags",
+			Operator: models.ConstraintOperatorNOTCONTAINS,
+			Value:    `[1, 2, 3]`,
+		}
+		_, err = c.ToMatchFunc()
+		assert.NotNil(t, err)
+
+		c = Constraint{
+			Property: "tags",
+			Operator: models.ConstraintOperatorNOTCONTAINS,
+			Value:    `{"value": 1}`,
+		}
+		_, err = c.ToMatchFunc()
+		assert.NotNil(t, err)
+	})
+	t.Run("unsupported constraint target value leads to constant false match func", func(t *testing.T) {
+		c := Constraint{
+			Property: "n",
+			Operator: models.ConstraintOperatorGT,
+			Value:    "true",
+		}
+		matchFunc, err := c.ToMatchFunc()
+		assert.NotNil(t, err)
+
+		match, err := matchFunc(map[string]interface{}{"n": 0})
+		assert.Nil(t, err)
+		assert.False(t, match)
+		match, err = matchFunc(map[string]interface{}{"n": 1})
+		assert.Nil(t, err)
+		assert.False(t, match)
+		match, err = matchFunc(map[string]interface{}{"n": 1000000000000000000})
+		assert.Nil(t, err)
+		assert.False(t, match)
+
+		c = Constraint{
+			Property: "arr",
+			Operator: models.ConstraintOperatorEQ,
+			Value:    "[1, 2, 3]",
+		}
+		matchFunc, err = c.ToMatchFunc()
+		assert.NotNil(t, err)
+
+		match, err = matchFunc(map[string]interface{}{"arr": []interface{}{1, 2, 3}})
+		assert.Nil(t, err)
+		assert.False(t, match)
+		match, err = matchFunc(map[string]interface{}{"arr": []interface{}{1., 2., 3.}})
+		assert.Nil(t, err)
+		assert.False(t, match)
 	})
 }
