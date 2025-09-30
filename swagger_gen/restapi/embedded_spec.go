@@ -1787,6 +1787,14 @@ func init() {
           "type": "integer",
           "format": "int64"
         },
+        "flagTags": {
+          "description": "flagTags. flagTags looks up flags by tag. Either works.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-omitempty": true
+        },
         "segmentID": {
           "type": "integer",
           "format": "int64"
@@ -4040,6 +4048,14 @@ func init() {
         "flagSnapshotID": {
           "type": "integer",
           "format": "int64"
+        },
+        "flagTags": {
+          "description": "flagTags. flagTags looks up flags by tag. Either works.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-omitempty": true
         },
         "segmentID": {
           "type": "integer",
